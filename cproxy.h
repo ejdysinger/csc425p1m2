@@ -20,8 +20,4 @@
 #include <stdlib.h>
 #include <string.h>
 
-
-class cproxy {
-};
-
 #endif /* CPROXY_H_ */

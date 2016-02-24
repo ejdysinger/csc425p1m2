@@ -15,7 +15,7 @@
  RETURNS:     -1 if failure, 0 otherwise
 ******************************************************************************************************/
 
-int main(int argc, char * argv){
+int main(int argc, char * argv[]){
 	// variables
 	char *cBuffer[1024], daemonBuffer[1024]; // a buffer for storing messages sent to the sProxy
 	int cProxySocket, daemonSocket, cTemp;   // sockets for the client and the telnet daemon, respectively
@@ -23,8 +23,20 @@ int main(int argc, char * argv){
 	struct sockaddr_in cP, tD, temp;         // sockaddr_in structs for the sockets, filled w/ command line inputs
 	fd_set toRead;                           // fd_set to keep track of all of the sockets that are ready to read
 
+	// populate the tN struct for the telnet
+	cP.sin_family = AF_INET;
+	cP.sin_addr.s_addr = INADDR_ANY;
+	cP.sin_port = htons(23);
+	bzero(&cP.sin_zero, 8);
+
+	// pupulate the sP struct for the sProxy
+	tD.sin_family = AF_INET;
+	tD.sin_addr.s_addr = inet_addr("127.0.0.1");
+	tD.sin_port = htons(atoi(argv[1]));
+	bzero(&tD.sin_zero,8);
+
 	// create the sockets
-	if(((cProxySocket = socket(AF_INET,SOCK_STREAM,0))  == -1) || (daemonSocket = socket(AF_INET,SOCK_STREAM,0))  == -1)){
+	if(((cProxySocket = socket(AF_INET,SOCK_STREAM,0))  == -1) || ((daemonSocket = socket(AF_INET,SOCK_STREAM,0))  == -1)){
 		fprintf(stderr,"ERROR 1: SERVERPROXY failed to create socket\n");
 		exit(-1);
 	}
@@ -56,14 +68,14 @@ int main(int argc, char * argv){
 			break;
 		}
 		// connect to the telnet daemon
-		if((opSuccess= connect(daemonSocket, (struct sockaddr *)&tD,sizeof(struct sockaddr_in))) == -1){
+		if((opSuccess = connect(daemonSocket, (struct sockaddr *)&tD,sizeof(struct sockaddr_in))) == -1){
 			fprintf(stderr,"ERROR 6: SERVERPROXY failed to connect to telnet Daemon\n");
 			exit(-1);
 		}
 
 		// add both telnet daemon and cproxy to select set
-		FD_SET(cTemp, toRead);
-		FD_SET(daemonSocket, toRead);
+		FD_SET(cTemp, &toRead);
+		FD_SET(daemonSocket, &toRead);
 
 		// finds out which is the highest number of socket
 		selectParam = cTemp +1;
@@ -72,10 +84,10 @@ int main(int argc, char * argv){
 
 		// send login message
 		sprintf(cBuffer,"I'm in.\n");
-		send(cTemp,cBuffer, sizeof(cBuffer));
+		send(cTemp,cBuffer, sizeof(cBuffer),0);
 
 		// loop through until no new input received
-		while((opSuccess = select(selectParam, toRead, NULL, NULL, NULL)) >0){
+		while((opSuccess = select(selectParam, &toRead, NULL, NULL, NULL)) > 0){
 			if(opSuccess == -1){
 				fprintf(stderr,"ERROR 7: SERVERPROXY failed select\n");
 				exit(-1);
@@ -91,10 +103,10 @@ int main(int argc, char * argv){
 				recv(daemonSocket, daemonBuffer, sizeof(daemonBuffer), 0);
 			}
 			// write the data back
-			if((opSuccess = send(cTemp, daemonBuffer, sizeof(daemonBuffer),0) == -1){
+			if((opSuccess = send(cTemp, daemonBuffer, sizeof(daemonBuffer),0)) == -1){
 				break;
 			}
-			if((opSuccess = send(daemonSocket, cBuffer, sizeof(cBuffer),0) < == -1){
+			if((opSuccess = send(daemonSocket, cBuffer, sizeof(cBuffer),0)) == -1){
 				break;
 			}
 		}
@@ -111,17 +123,7 @@ int main(int argc, char * argv){
  DESCRIPTION: populates the socket structs for the cProxy and telnet daemon sockets
  PARAMS:      pointers to the two structs, the port number to listen on
  RETURNS:     -1 if invalid information supplied, 0 on success
-******************************************************************************************************/
+******************************************************************************************************
 void socketPrep(struct sockaddr_in *cP, struct sockaddr_in *tD, char *cProxyPort){
-	// populate the tN struct for the telnet
-	cP.sin_family = AF_INET;
-	cP.sin_addr.s_addr = INADDR_ANY;
-	cP.sin_port = htons(atoi(cProxyPort));
-	bzero(&cP.sin_zero, 8);
 
-	// pupulate the sP struct for the sProxy
-	tD.sin_family = AF_INET;
-	tD.sin_addr.s_addr = inet_addr("127.0.0.1");
-	tD.sin_port = htons(atoi());
-	bzero(&tD.sin_zero,8);
-}
+}*/

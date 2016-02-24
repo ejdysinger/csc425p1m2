@@ -20,7 +20,4 @@
 #include <stdlib.h>
 #include <string.h>
 
-class sproxy {
-};
-
 #endif /* SPROXY_H_ */

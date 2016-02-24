@@ -14,7 +14,7 @@
  PARAMS:      the port number and IP to listen to for the connection to the sProxy
  RETURNS:     -1 if failure, 0 otherwise
 ******************************************************************************************************/
-int main(int argc, char * argv){
+int main(int argc, char * argv[]){
 	// variables
 	char tnBuffer[1024], sProxyBuffer[1024]; // buffer for messages
 	int telnetSocket, sProxySocket, tnTemp;  // sockets for the client and the telnet daemon, respectively
@@ -23,11 +23,20 @@ int main(int argc, char * argv){
 	fd_set toRead;                           // fd_set to keep track of all of the sockets that are ready to read
 
 	// set up the sockaddr_in structs
-	socketPrep(&tN, &sP, argv[1], argv[2], argv[3]));
+	tN.sin_family = AF_INET;
+	tN.sin_addr.s_addr = INADDR_ANY;
+	tN.sin_port = htons(atoi(argv[1]));
+	bzero(&tN.sin_zero, 8);
+
+	// pupulate the sP struct for the sProxy
+	sP.sin_family = AF_INET;
+	sP.sin_addr.s_addr = inet_addr(argv[2]);
+	sP.sin_port = htons(atoi(argv[3]));
+	bzero(&sP.sin_zero,8);
 
 	// create the sockets
-	if(((telnetSocket = socket(AF_INET,SOCK_STREAM,0))  == -1) || (sProxySocket = socket(AF_INET,SOCK_STREAM,0))  == -1)){
-		fprintf(stderr,"ERROR 1: CLIENTPROXY failed to create socket\n");
+	if(((telnetSocket = socket(AF_INET,SOCK_STREAM,0)) == -1) || (sProxySocket = socket(AF_INET,SOCK_STREAM,0))  == -1)){
+		fprintf(stderr,"ERROR 1: CLIENTPROXY failed to create telnet socket\n");
 		exit(-1);
 	}
 
@@ -42,34 +51,24 @@ int main(int argc, char * argv){
 		fprintf(stderr,"ERROR 5: CLIENTPROXY failed listen on cProxy socket\n");
 		exit(-1);
 	}
-	if((tnTemp  = accept(telnetSocket,(struct sockaddr *) &temp, NULL)) == -1){
-		fprintf(stderr,"ERROR 5: CLIENTPROXY failed accept\n");
-		break;
-	}
 
-	// connect to the serverProxy
-	if((opSuccess= connect(sProxySocket, (struct sockaddr *)&sP,sizeof(struct sockaddr_in))) == -1){
-		fprintf(stderr,"ERROR 3: CLIENTPROXY failed to connect to telnet Daemon\n");
-		exit(-1);
-	}
-
-	// listen to the bound socket for connections and accept
-	if((opSuccess = listen(tnTemp, 0)) == -1){
-		fprintf(stderr,"ERROR 5: CLIENTPROXY failed listen on cProxy socket\n");
-		exit(-1);
-	}
 
 	// wait for inputs from either socket and pass them between the two sockets
 	while(1){
 
-		if((tnTemp  = accept(tnTemp,(struct sockaddr *) &temp, NULL)) == -1){
+		if((tnTemp  = accept(telnetSocket,(struct sockaddr *) &temp, NULL)) == -1){
 			fprintf(stderr,"ERROR 5: CLIENTPROXY failed accept\n");
 			break;
 		}
 
-		// connect to the serverProxyFD_SET(cProxySocket, toRead);
-		FD_SET(tnTemp, toRead);
-		FD_SET(sProxySocket, toRead);
+		// connect to the serverProxy
+		if((opSuccess= connect(sProxySocket, (struct sockaddr *)&sP,sizeof(struct sockaddr_in))) == -1){
+			fprintf(stderr,"ERROR 3: CLIENTPROXY failed to connect to telnet Daemon\n");
+			exit(-1);
+		}
+
+		FD_SET(tnTemp, &toRead);
+		FD_SET(sProxySocket, &toRead);
 
 		if((opSuccess= connect(sProxySocket, (struct sockaddr *)&sP,sizeof(struct sockaddr_in))) == -1){
 			fprintf(stderr,"ERROR 3: CLIENTPROXY failed to connect to sProxy\n");
@@ -81,7 +80,7 @@ int main(int argc, char * argv){
 				selectParam = sProxySocket  + 1;
 
 		// pass messages back and forth as they arrive
-		while((opSuccess = select(selectParam, toRead, NULL, NULL, NULL)) >0){
+		while((opSuccess = select(selectParam, &toRead, NULL, NULL, NULL)) >0){
 			if(opSuccess == -1){
 				fprintf(stderr,"ERROR 7: SERVERPROXY failed select\n");
 				exit(-1);
@@ -104,7 +103,7 @@ int main(int argc, char * argv){
 		}
 		// close the connections and flush the select structs
 		close(tnTemp);
-		FD_ZERO(toRead);
+		FD_ZERO(&toRead);
 
 	}
 
@@ -118,10 +117,10 @@ int main(int argc, char * argv){
  DESCRIPTION: populates the socket structs for the cProxy and telnet daemon sockets
  PARAMS:      pointers to the two structs, the telnet port number, the sProxy port number and IP addy
  RETURNS:     nothing
-******************************************************************************************************/
+******************************************************************************************************
 void socketPrep(struct sockaddr_in *tN, struct sockaddr_in *sP, char *telnetSocketNum, char *sProxyIP, char *sProxyPort){
 	// populate the tN struct for the telnet
-	tN.sin_family = AF_INET;
+	tN->sin_family = AF_INET;
 	tN.sin_addr.s_addr = INADDR_ANY;
 	tN.sin_port = htons(atoi(telnetSocketNum));
 	bzero(&tN.sin_zero, 8);
@@ -131,4 +130,4 @@ void socketPrep(struct sockaddr_in *tN, struct sockaddr_in *sP, char *telnetSock
 	sP.sin_addr.s_addr = inet_addr(sProxyIP);
 	sP.sin_port = htons(atoi(sProxyPort));
 	bzero(&sP.sin_zero,8);
-}
+}*/
